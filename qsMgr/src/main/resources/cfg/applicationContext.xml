@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+	xmlns="http://www.springframework.org/schema/beans"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	http://www.springframework.org/schema/beans/spring-beans-4.0.xsd 
+	http://www.springframework.org/schema/tx 
+	http://www.springframework.org/schema/tx/spring-tx-4.0.xsd 
+	http://www.springframework.org/schema/aop  
+	http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+	http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context.xsd
+	">
+	
+	<context:annotation-config/>
+    <context:component-scan base-package="com.dais.service"></context:component-scan>
+	
+	<bean id="datasource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="org.h2.Driver" />
+		<!-- <property name="url" value="jdbc:h2:mem:db1;DB_CLOSE_DELAY=-1;MVCC=TRUE"></property> -->
+		<property name="url" value="jdbc:h2:file:./h2db;FILE_LOCK=NO;"></property>
+		<!-- AUTO_SERVER=TRUE -->
+		<property name="username" value="root" /> 
+		<property name="password" value="root" /> 
+		<!-- 数据库连接池保持的最小连接数 -->
+		<property name="minIdle" value="5" />
+		<!-- 数据库连接池保持的最大连接数 --> 
+		<property name="maxIdle" value="30" />
+		<!--
+			当数据库连接因为某种原因断掉之后，再重新从连接池中拿另外一个连接时实际上这个连接可能
+			已经无效，所以为了确保所拿到的连接全都有效需要在获取连接，返回连接以及连接空闲时进行
+			有效性验证 下面3个设置为ture时进行验证，默认为false
+		 -->
+		<!-- 取得连接时是否进行有效性验证 -->
+		<property name="testOnBorrow" value="true" />
+		<!-- 返回连接时是否进行有效性验证 -->
+		<property name="testOnReturn" value="true" />
+		<!-- 连接空闲时是否进行有效性验证 -->
+		<property name="testWhileIdle" value="true" />
+		
+	</bean>
+	
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="datasource" />
+		<!-- 注意：我用的是Annotation的方式配置的Hibernate，这里的property的name是annotatedClasses -->
+		<property name="packagesToScan">
+			<list>
+				<value>com.dais.domain</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<props>
+			    <!-- 设置Hibernate方言 -->
+				<prop key="hibernate.dialect">org.hibernate.dialect.H2Dialect</prop>
+				<!-- 是否打印sql -->
+				<prop key="hibernate.show_sql">true</prop>
+				<!-- 格式化sql -->
+				<prop key="hibernate.format_sql">true</prop>
+				<!-- 是否自动更新表 -->
+				<prop key="hibernate.hbm2ddl.auto">update</prop>
+				<!-- 
+				<prop key="hibernate.current_session_context_class">thread</prop>
+				 -->
+				 
+				<!-- 最大抓取深度，如果为0，则关闭默认的外连接抓取。建议值为0-3 -->
+				<prop key="hibernate.max_fetch_depth">3</prop>
+				<!-- 用于生成有助于调试的注释信息，默认为关闭 -->
+				<prop key="hibernate.use_sql_comments">true</prop>
+			</props>
+		</property>
+	</bean>
+	
+	
+	<bean  class="org.springframework.dao.annotation.PersistenceExceptionTranslationPostProcessor"/>
+	<!-- 4、创建事务管理器 -->
+	<bean id="txManage" 
+		class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+	<!-- 5、以注解的形式管理事务 -->
+	<tx:annotation-driven transaction-manager="txManage" />
+	<tx:advice id="txAdvice" transaction-manager="txManage">
+		<tx:attributes>
+			<tx:method name="save*" propagation="REQUIRED"
+				rollback-for="java.lang.Exception" />
+			<tx:method name="update*" propagation="REQUIRED"
+				rollback-for="java.lang.Exception" />
+			<tx:method name="delete*" propagation="REQUIRED"
+				rollback-for="java.lang.Exception" />
+			<tx:method name="find*" read-only="true" propagation="REQUIRED"
+				rollback-for="java.lang.Exception" />
+			<tx:method name="*" />
+		</tx:attributes>
+	</tx:advice>
+	<aop:config>
+	<!-- (execution(* com..bussiness..service.impl.*.*(..)) or (execution(* com..core.service.impl.*.*(..))) -->
+	<!-- (execution(* com.dais.service.*.*(..))) -->
+	<aop:pointcut id="transactionPointcut"
+			expression="(execution(* com.dais.service.impl.*.*(..)))" />
+	<aop:advisor pointcut-ref="transactionPointcut"
+			advice-ref="txAdvice" />
+	</aop:config>
+</beans>

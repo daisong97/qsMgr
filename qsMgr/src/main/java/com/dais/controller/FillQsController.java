@@ -2,6 +2,8 @@ package com.dais.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -68,22 +70,35 @@ public class FillQsController {
 			Model model, HttpServletResponse response) {
 		ResponseStatus status = new ResponseStatus("添加成功!", Constants.success);
 		try {
+			if(StringUtils.isBlank(jobNum) || jobNum.length() < 5 
+					|| jobNum.length() > 10 || !MixHelper.isIpStr(ip)){
+				status.setMsg("无效的ip!");
+				status.setStatus(Constants.failure);
+				return status;
+			}
 			model.addAttribute(IS_SELECT_QS, qsId);
 			response.addCookie(new Cookie(IS_SELECT_QS, qsId.toString()));
 			Map<String, Object> paramMap = MixHelper.newQueryMap("ip", ip);
 			paramMap.put("qsId", qsId);
-			Integer count = baseDal.queryCount(
-					"from JobRecord where ip=:ip and qs.id=:qsId", paramMap);
+			
+			Integer count = baseDal.queryCount("from JobRecord where ip=:ip and qs.id=:qsId", paramMap);
 			if (count > 0) {
 				status.setMsg("ip已经填写过了！");
 				status.setStatus(Constants.repeat);
 			} else {
 				Qs qs = baseDal.findById(qsId, Qs.class);
-				JobRecord jr = new JobRecord();
-				jr.setIp(ip);
-				jr.setJobNumber(jobNum);
-				jr.setQs(qs);
-				baseDal.create(jr);
+				Integer qsAll = qs.getTotalNum();
+				Integer qsReadCount = baseDal.queryCount("from JobRecord where qs.id=:qsId", paramMap);
+				if((qsAll - qsReadCount - 1) <=0){
+					status.setMsg("问卷已经结束！");
+					status.setStatus(Constants.failure);
+				}else{
+					JobRecord jr = new JobRecord();
+					jr.setIp(ip);
+					jr.setJobNumber(jobNum);
+					jr.setQs(qs);
+					baseDal.create(jr);
+				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

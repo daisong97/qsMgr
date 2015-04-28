@@ -2,6 +2,10 @@ package com.dais.app;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.commons.lang3.StringUtils;
 
 public class MixHelper {
 	public static <K,V> Map<K, V> newMap(K k,V v){
@@ -43,5 +47,14 @@ public class MixHelper {
 	 */
 	public static boolean isGtZero(Number number){
 		return (number != null && number.longValue() > 0);
+	}
+	public static boolean isIpStr(String ip){
+		if(StringUtils.isNoneBlank(ip)){
+			Pattern pattern = Pattern.compile("\\b((?!\\d\\d\\d)\\d+|1\\d\\d|2[0-4]\\d|25[0-5])\\.((?!\\d\\d\\d)\\d+|1\\d\\d|2[0-4]\\d|25[0-5])\\.((?!\\d\\d\\d)\\d+|1\\d\\d|2[0-4]\\d|25[0-5])\\.((?!\\d\\d\\d)\\d+|1\\d\\d|2[0-4]\\d|25[0-5])\\b");
+			Matcher matcher = pattern.matcher("158.346.28.30"); //以验证127.400.600.2为例
+			return matcher.matches();
+		}
+		return false;
+		
 	}
 }
